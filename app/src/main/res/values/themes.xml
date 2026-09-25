@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tema de la ventana. NexusTime es Compose puro, así que este estilo solo
+  existe para lo que ocurre ANTES del primer frame: sin él, Android pinta la
+  ventana en blanco y se ve un destello al abrir la app en una habitación
+  oscura.
+-->
+<resources>
+    <style name="Theme.NexusTime" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/nexus_black</item>
+        <item name="android:statusBarColor">@color/nexus_black</item>
+        <item name="android:navigationBarColor">@color/nexus_black</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:colorAccent">@color/nexus_blue</item>
+    </style>
+</resources>

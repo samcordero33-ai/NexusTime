@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Icono de NexusTime, construido solo con la paleta oficial:
+    aro      -> Azul Eléctrico (#1E88E5) a Celeste (#80D8FF)
+    esfera   -> Negro OLED (#000000) con borde Plata / Metal (#C8C8C8)
+    marcas   -> Plata / Metal (#C8C8C8)
+    manecillas -> Blanco Puro (#FFFFFF) y Celeste (#80D8FF)
+    centro   -> Azul Eléctrico (#1E88E5)
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group android:translateX="9" android:translateY="9">
+
+        <!-- Aro exterior: azul eléctrico -> celeste -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M45,10 A35,35 0 1,1 44.9,10"
+            android:strokeLineCap="round"
+            android:strokeWidth="7">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:endX="80"
+                    android:endY="80"
+                    android:startX="10"
+                    android:startY="10"
+                    android:type="linear">
+                    <item android:offset="0" android:color="#FF1E88E5" />
+                    <item android:offset="1" android:color="#FF80D8FF" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- Esfera interior: negra, enmarcada en plata -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M45,20 A25,25 0 1,1 44.9,20 Z" />
+
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M45,20 A25,25 0 1,1 44.9,20"
+            android:strokeColor="#FFC8C8C8"
+            android:strokeWidth="2" />
+
+        <!-- Marcas de las 12, 3, 6 y 9 en plata -->
+        <path
+            android:pathData="M45,22 L45,28"
+            android:strokeColor="#FFC8C8C8"
+            android:strokeLineCap="round"
+            android:strokeWidth="3" />
+        <path
+            android:pathData="M68,45 L62,45"
+            android:strokeColor="#FFC8C8C8"
+            android:strokeLineCap="round"
+            android:strokeWidth="3" />
+        <path
+            android:pathData="M45,68 L45,62"
+            android:strokeColor="#FFC8C8C8"
+            android:strokeLineCap="round"
+            android:strokeWidth="3" />
+        <path
+            android:pathData="M22,45 L28,45"
+            android:strokeColor="#FFC8C8C8"
+            android:strokeLineCap="round"
+            android:strokeWidth="3" />
+
+        <!-- Manecilla de la hora: blanco puro -->
+        <path
+            android:pathData="M45,45 L45,28"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="3.5" />
+
+        <!-- Manecilla de los minutos: celeste -->
+        <path
+            android:pathData="M45,45 L57,51"
+            android:strokeColor="#FF80D8FF"
+            android:strokeLineCap="round"
+            android:strokeWidth="3.5" />
+
+        <!-- Centro: azul eléctrico -->
+        <path
+            android:fillColor="#FF1E88E5"
+            android:pathData="M45,41 A4,4 0 1,1 44.9,41 Z" />
+    </group>
+</vector>

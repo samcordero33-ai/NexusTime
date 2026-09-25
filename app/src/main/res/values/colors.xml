@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paleta oficial de NexusTime reflejada en XML.
+  Es la misma fuente de verdad que core/ui/theme/Color.kt; se duplica aquí solo
+  porque el tema de la ventana (pre-Compose) tiene que definirse en recursos.
+-->
+<resources>
+    <color name="nexus_black">#FF000000</color>
+    <color name="nexus_white">#FFFFFFFF</color>
+    <color name="nexus_blue">#FF1E88E5</color>
+    <color name="nexus_sky_blue">#FF80D8FF</color>
+    <color name="nexus_silver">#FFC8C8C8</color>
+</resources>
