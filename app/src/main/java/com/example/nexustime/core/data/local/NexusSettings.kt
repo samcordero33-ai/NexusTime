@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.nexustime.core.data.reminder.Reminder
+import com.example.nexustime.core.data.reminder.ReminderCodec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -111,6 +113,8 @@ object NexusSettings {
     private val KEY_HOUR_FORMAT = stringPreferencesKey("hour_format")
     private val KEY_SCREEN_ON_MODE = stringPreferencesKey("screen_on_mode")
 
+    private val KEY_REMINDERS = stringPreferencesKey("reminders")
+
     // --- Valores por defecto ---
     const val DEFAULT_POWER_ALERTS = true
     const val DEFAULT_BATTERY_LOW_THRESHOLD = 15
@@ -166,6 +170,12 @@ object NexusSettings {
             .stateIn(scope, SharingStarted.Eagerly, DEFAULT_SCREEN_ON_MODE)
     }
 
+    /** Lista de recordatorios (se decodifica de JSON en cada emisión). */
+    val reminders: StateFlow<List<Reminder>> by lazy {
+        flow { emitAll(dataStore.data.map { ReminderCodec.decode(it[KEY_REMINDERS]) }) }
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
+    }
+
     /** [StateFlow] genérico sobre una clave de DataStore con su default. */
     private fun <T> preferenceFlow(key: Preferences.Key<T>, default: T): StateFlow<T> =
         flow { emitAll(dataStore.data.map { prefs -> prefs[key] ?: default }) }
@@ -214,6 +224,10 @@ object NexusSettings {
     suspend fun chimePhraseTemplate(): String =
         requireStore().data.first()[KEY_CHIME_TEMPLATE] ?: DEFAULT_CHIME_TEMPLATE
 
+    /** Recordatorios actuales, leídos para el planificador y el receptor. */
+    suspend fun currentReminders(): List<Reminder> =
+        ReminderCodec.decode(requireStore().data.first()[KEY_REMINDERS])
+
     // --- Escritores (suspend, atómicos sobre DataStore) ----------------------
 
     suspend fun setPowerAlertsEnabled(enabled: Boolean) {
@@ -235,6 +249,11 @@ object NexusSettings {
 
     suspend fun setScreenOnMode(mode: ScreenOnMode) {
         requireStore().edit { it[KEY_SCREEN_ON_MODE] = mode.name }
+    }
+
+    /** Reemplaza toda la lista de recordatorios (se guarda como JSON). */
+    suspend fun setReminders(reminders: List<Reminder>) {
+        requireStore().edit { it[KEY_REMINDERS] = ReminderCodec.encode(reminders) }
     }
 
     // --- Utilidades de parseo ---

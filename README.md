@@ -1,16 +1,18 @@
-# NexusTime v1.0-release
+# NexusTime v1.1.0
 
 Reloj de mesa y dashboard inteligente para tablets Android en **orientación horizontal**.
 
-> Primera versión estable: base v0.1, **avisos parlantes de corriente y batería**
-> (v0.3), **anuncio horario por voz** (v0.2) y **dashboard de 3 zonas con reloj
-> neón y agenda** (v0.4). La **v1.0** migra las preferencias a **Jetpack
-> DataStore**, añade **formato de hora configurable** (Sistema / 12 h / 24 h),
-> **política de pantalla** (siempre / solo al cargar) y **protección anti
-> burn-in** por micro-desplazamiento del reloj.
+> Sobre la base estable v1.0, la **v1.1** añade **noticias del día con lectura por
+> voz** (feed RSS), un **programador de recordatorios** (voz o MP3, varias horas al
+> día, vía AlarmManager) y refuerza los **avisos de carga** (logs y reintento
+> automático del motor TTS si aún no ha arrancado).
 >
-> La tarjeta "TU DÍA" lee los eventos de hoy del calendario del dispositivo.
-> **Todavía no** incluye clima, alarmas avanzadas ni temporizador (v0.5).
+> Ya incluido: base v0.1, **avisos parlantes de corriente y batería** (v0.3),
+> **anuncio horario por voz** (v0.2), **dashboard de 3 zonas con reloj neón y
+> agenda "TU DÍA"** (v0.4) y la **persistencia en Jetpack DataStore** con formato
+> de hora, política de pantalla y anti burn-in (v1.0).
+>
+> **Todavía no** incluye clima ni temporizador (v0.5).
 
 ## Stack
 
@@ -38,15 +40,23 @@ com.example.nexustime/
 │   ├── data/
 │   │   ├── calendar/
 │   │   │   └── CalendarManager.kt       # Lectura de eventos de hoy (READ_CALENDAR)
-│   │   └── local/
-│   │       └── NexusSettings.kt         # Preferencias sobre Jetpack DataStore
+│   │   ├── local/
+│   │   │   └── NexusSettings.kt         # Preferencias sobre Jetpack DataStore
+│   │   ├── news/
+│   │   │   └── NewsRepository.kt        # Lector RSS (HttpURLConnection + XmlPullParser)
+│   │   └── reminder/
+│   │       └── Reminder.kt              # Modelo de recordatorio + códec JSON
 │   ├── service/
 │   │   ├── tts/
-│   │   │   └── TtsManager.kt            # Motor Text-to-Speech compartido (español)
+│   │   │   └── TtsManager.kt            # Motor Text-to-Speech compartido (cola + reintento)
 │   │   ├── chime/
 │   │   │   ├── ChimeScheduler.kt        # AlarmManager: próximo anuncio horario
 │   │   │   ├── ChimeReceiver.kt         # Dispara el anuncio y reprograma
 │   │   │   └── ChimeText.kt             # Hora en formato hablado
+│   │   ├── reminder/
+│   │   │   ├── ReminderScheduler.kt     # AlarmManager: alarmas por (recordatorio, hora)
+│   │   │   ├── ReminderReceiver.kt      # Dispara el recordatorio y reprograma
+│   │   │   └── AudioPlayer.kt           # Reproducción de MP3 de recordatorios
 │   │   └── receivers/
 │   │       └── PowerConnectionReceiver.kt  # Avisos de corriente y batería
 │   └── ui/
@@ -60,7 +70,7 @@ com.example.nexustime/
 │       │   ├── BurnInShift.kt           # Micro-desplazamiento anti burn-in
 │       │   └── ComingSoon.kt            # Estado "próximamente"
 │       └── navigation/
-│           └── NexusDestination.kt      # Destinos: Reloj / Agenda / Ajustes
+│           └── NexusDestination.kt      # Destinos: Reloj / Agenda / Noticias / Avisos / Ajustes
 └── feature/
     ├── clock/                           # Reloj neón + indicadores de estado
     │   ├── ClockScreen.kt
@@ -71,6 +81,12 @@ com.example.nexustime/
     │   ├── AgendaPanel.kt               # Panel derecho
     │   ├── AgendaScreen.kt              # Pantalla central de Agenda
     │   └── AgendaViewModel.kt
+    ├── news/                            # Titulares del día + lectura por voz
+    │   ├── NewsScreen.kt
+    │   └── NewsViewModel.kt
+    ├── reminder/                        # Recordatorios programados (voz / MP3)
+    │   ├── ReminderScreen.kt
+    │   └── ReminderViewModel.kt
     └── settings/                        # Ajustes (alertas, chime, hora y pantalla)
         ├── SettingsScreen.kt
         └── SettingsViewModel.kt
@@ -235,6 +251,44 @@ devuelve cada **2 minutos** un pequeño desplazamiento de hasta **3 dp**, recorr
 las ocho direcciones alrededor del centro. `ClockScreen` lo aplica al bloque del
 reloj con `Modifier.offset { ... }` (versión lambda: solo recalcula layout, no
 fuerza recomposición).
+
+## v1.1.0
+
+### Avisos de carga: registro y motor de voz
+
+- Se añaden **logs de depuración** (`Log.d`, tag `NexusPower`) en
+  `PowerConnectionReceiver` para confirmar que el evento de energía se captura al
+  conectar/desconectar el cable.
+- `TtsManager` ahora **reintenta** la inicialización hasta 3 veces (con 2 s de
+  espera) si el motor falla al arrancar, además de **encolar** el texto: un aviso
+  que llegue antes de que el motor esté listo no se pierde.
+- El receptor sigue registrándose de forma **dinámica** en `MainActivity`
+  (`onStart`/`onStop`) solo mientras el interruptor de alertas está activo, con
+  `RECEIVER_NOT_EXPORTED`.
+
+### Noticias del día con lectura por voz
+
+- `NewsRepository` descarga y parsea el feed **RSS de BBC Mundo** con
+  `HttpURLConnection` + `XmlPullParser` (parser *pull* de streaming, sin añadir
+  Retrofit/OkHttp ni parser XML extra). Lanza `IOException` si no hay red.
+- El destino **Noticias** muestra los titulares y ofrece:
+  - **Leer titulares**: `TtsManager` lee en voz alta los primeros 5, numerados.
+  - **Actualizar**: vuelve a descargar el feed.
+  - Cada fila abre el enlace en el navegador (`LocalUriHandler`).
+- Requiere el permiso `INTERNET`.
+
+### Recordatorios programados (voz o MP3)
+
+- El usuario crea un recordatorio con **etiqueta**, **tipo** (voz o audio) y una o
+  varias **horas del día** (selector Material 3 `TimePicker`).
+  - **Voz**: se escribe una oración y se lee con `TtsManager`.
+  - **Audio**: se elige un **MP3** con el *file picker* del sistema (SAF); se
+    guarda su URI con **permiso de lectura persistente**.
+- Se persisten en DataStore como JSON (`ReminderCodec`, con `org.json`) y se
+  planifican con **AlarmManager**: una alarma por cada (recordatorio, hora), con
+  *request code* único. Al dispararse, `ReminderReceiver` suena el aviso y
+  **rearma** la siguiente ocurrencia. Si no hay permiso de alarmas exactas, cae a
+  inexacta. Se reprograman al arrancar y tras un reinicio (`BOOT_COMPLETED`).
 
 ## Compilar
 

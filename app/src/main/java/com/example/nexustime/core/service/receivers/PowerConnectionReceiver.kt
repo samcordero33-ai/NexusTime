@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import android.util.Log
 import com.example.nexustime.core.data.local.NexusSettings
 import com.example.nexustime.core.data.local.PowerAlertEvent
 import com.example.nexustime.core.service.tts.TtsManager
@@ -50,6 +51,8 @@ class PowerConnectionReceiver : BroadcastReceiver() {
     private var fullAnnounced = false
 
     override fun onReceive(context: Context, intent: Intent) {
+        // Log de captura: confirma que el evento de energía llega al receptor.
+        Log.d(TAG, "Evento de energía recibido: action=${intent.action}")
         // Alarga la ventana de entrega para poder leer DataStore y decidir.
         val pendingResult = goAsync()
 
@@ -66,15 +69,20 @@ class PowerConnectionReceiver : BroadcastReceiver() {
 
     private suspend fun handle(context: Context, intent: Intent) {
         // Interruptor de Ajustes apagado -> silencio total.
-        if (!NexusSettings.isPowerAlertsEnabled()) return
+        if (!NexusSettings.isPowerAlertsEnabled()) {
+            Log.d(TAG, "Alertas de carga desactivadas; se ignora $intent.action")
+            return
+        }
 
         when (intent.action) {
             Intent.ACTION_POWER_CONNECTED -> {
+                Log.d(TAG, "Cargador CONECTADO")
                 fullAnnounced = false
                 speak(PowerAlertEvent.CONNECTED)
             }
 
             Intent.ACTION_POWER_DISCONNECTED -> {
+                Log.d(TAG, "Cargador DESCONECTADO")
                 lowAnnounced = false
                 speak(PowerAlertEvent.DISCONNECTED)
             }
@@ -96,6 +104,8 @@ class PowerConnectionReceiver : BroadcastReceiver() {
             BatteryManager.BATTERY_STATUS_UNKNOWN,
         )
         val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+
+        Log.d(TAG, "Batería: $percent% (status=$status, plugged=$plugged)")
 
         // Carga completa: estado FULL del sistema o 100% con el cargador puesto.
         val full = plugged && (status == BatteryManager.BATTERY_STATUS_FULL || percent >= 100)
@@ -128,6 +138,8 @@ class PowerConnectionReceiver : BroadcastReceiver() {
     }
 
     companion object {
+
+        private const val TAG = "NexusPower"
 
         /**
          * Filtro por llamada.

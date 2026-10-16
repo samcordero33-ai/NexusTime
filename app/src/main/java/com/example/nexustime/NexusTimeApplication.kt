@@ -3,6 +3,7 @@ package com.example.nexustime
 import android.app.Application
 import com.example.nexustime.core.data.local.NexusSettings
 import com.example.nexustime.core.service.chime.ChimeScheduler
+import com.example.nexustime.core.service.reminder.ReminderScheduler
 import com.example.nexustime.core.service.tts.TtsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,5 +37,7 @@ class NexusTimeApplication : Application() {
         TtsManager.initialize(this)
         // scheduleNext lee DataStore (suspend), así que se lanza en corrutina.
         applicationScope.launch { ChimeScheduler.scheduleNext(this@NexusTimeApplication) }
+        // Los recordatorios también dependen de DataStore: se reprograman aquí.
+        applicationScope.launch { ReminderScheduler.rescheduleAll(this@NexusTimeApplication) }
     }
 }

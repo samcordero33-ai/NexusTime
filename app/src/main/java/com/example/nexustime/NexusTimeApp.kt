@@ -28,6 +28,8 @@ import com.example.nexustime.feature.agenda.AgendaPanel
 import com.example.nexustime.feature.agenda.AgendaPanelWidth
 import com.example.nexustime.feature.agenda.AgendaRoute
 import com.example.nexustime.feature.clock.ClockRoute
+import com.example.nexustime.feature.news.NewsRoute
+import com.example.nexustime.feature.reminder.ReminderRoute
 import com.example.nexustime.feature.settings.SettingsRoute
 
 /**
@@ -82,6 +84,8 @@ fun NexusTimeApp(
                 when (target) {
                     NexusDestination.CLOCK -> ClockRoute()
                     NexusDestination.AGENDA -> AgendaRoute()
+                    NexusDestination.NEWS -> NewsRoute()
+                    NexusDestination.REMINDERS -> ReminderRoute()
                     NexusDestination.SETTINGS -> SettingsRoute()
                 }
             }

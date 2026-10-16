@@ -42,10 +42,17 @@ private val NexusTimeColorScheme = darkColorScheme(
     background = NexusBlack,
     onBackground = NexusWhite,
 
-    surface = NexusSilver,
-    onSurface = NexusBlack,
-    surfaceVariant = NexusSilver,
-    onSurfaceVariant = NexusBlack,
+    /*
+     * `surface`/`surfaceVariant` se mapean a los tokens oscuros (plata translúcida
+     * sobre OLED), no al metal puro: los componentes Material que dependen de
+     * ellos (diálogos, campos de texto, TimePicker) necesitan un fondo oscuro y
+     * texto claro para leerse sobre la interfaz OLED. El metal puro se reserva a
+     * bordes/tarjetas, que se pintan con los tokens NexusSurface/NexusBorder.
+     */
+    surface = NexusSurfaceHighlight,
+    onSurface = NexusWhite,
+    surfaceVariant = NexusSurfaceHighlight,
+    onSurfaceVariant = NexusTextSecondary,
     surfaceTint = Color.Transparent,
 
     outline = NexusSilver,

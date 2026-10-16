@@ -8,6 +8,9 @@
     <!-- Tarjeta "TU DÍA": eventos del calendario del dispositivo (solo lectura). -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
 
+    <!-- Noticias del día: descarga del feed RSS de titulares. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".NexusTimeApplication"
         android:allowBackup="true"
@@ -40,6 +43,21 @@
             android:name=".core.service.chime.ChimeReceiver"
             android:exported="false">
             <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Receptor de recordatorios programados. Declarado en el manifiesto para
+          que AlarmManager despierte el proceso con la app cerrada. También
+          reprograma las alarmas tras un reinicio/actualización.
+        -->
+        <receiver
+            android:name=".core.service.reminder.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.nexustime.action.REMINDER" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>

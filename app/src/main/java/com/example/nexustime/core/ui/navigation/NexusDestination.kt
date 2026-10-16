@@ -3,6 +3,8 @@ package com.example.nexustime.core.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.EventNote
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -27,6 +29,16 @@ enum class NexusDestination(
         label = "Agenda",
         icon = Icons.AutoMirrored.Outlined.EventNote,
         contentDescription = "Agenda",
+    ),
+    NEWS(
+        label = "Noticias",
+        icon = Icons.Outlined.Newspaper,
+        contentDescription = "Noticias del día",
+    ),
+    REMINDERS(
+        label = "Avisos",
+        icon = Icons.Outlined.Alarm,
+        contentDescription = "Recordatorios programados",
     ),
     SETTINGS(
         label = "Ajustes",
