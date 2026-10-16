@@ -14,7 +14,7 @@ import java.util.Locale
 object ChimeText {
 
     /** Anuncio completo para la hora actual, aplicando la plantilla del usuario. */
-    fun currentAnnouncement(): String {
+    suspend fun currentAnnouncement(): String {
         val template = NexusSettings.chimePhraseTemplate()
         return template.replace(NexusSettings.CHIME_HOUR_PLACEHOLDER, spokenTime(LocalTime.now()))
     }

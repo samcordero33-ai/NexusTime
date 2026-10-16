@@ -8,6 +8,9 @@ import android.os.BatteryManager
 import com.example.nexustime.core.data.local.NexusSettings
 import com.example.nexustime.core.data.local.PowerAlertEvent
 import com.example.nexustime.core.service.tts.TtsManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Avisos parlantes de corriente y batería.
@@ -30,8 +33,11 @@ import com.example.nexustime.core.service.tts.TtsManager
  * El sistema solo entrega `ACTION_BATTERY_CHANGED` a receptores registrados de
  * forma **dinámica** (ver `MainActivity`); declararlo en el manifiesto no funciona.
  *
- * `onReceive()` es síncrono y de muy corta duración: aquí solo se decide qué frase
- * se lanza. El habla es asíncrona ([TtsManager.speak] encola), no bloquea la entrega.
+ * **DataStore es asíncrono**, así que `onReceive()` no puede leer las preferencias
+ * de forma síncrona. Se usa [goAsync], que alarga la ventana de entrega del
+ * broadcast y devuelve un [PendingResult] que hay que cerrar con `finish()`. La
+ * lectura se hace en una corrutina sobre `Dispatchers.IO`; el habla es además
+ * asíncrona ([TtsManager.speak] encola), así que nada bloquea el hilo principal.
  */
 class PowerConnectionReceiver : BroadcastReceiver() {
 
@@ -44,6 +50,21 @@ class PowerConnectionReceiver : BroadcastReceiver() {
     private var fullAnnounced = false
 
     override fun onReceive(context: Context, intent: Intent) {
+        // Alarga la ventana de entrega para poder leer DataStore y decidir.
+        val pendingResult = goAsync()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                handle(context.applicationContext, intent)
+            } finally {
+                // Siempre se cierra, haya habido excepción o no: si no, el
+                // sistema espera el tiempo máximo y registra un ANR de broadcast.
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private suspend fun handle(context: Context, intent: Intent) {
         // Interruptor de Ajustes apagado -> silencio total.
         if (!NexusSettings.isPowerAlertsEnabled()) return
 
@@ -64,7 +85,7 @@ class PowerConnectionReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun handleBatteryLevel(intent: Intent) {
+    private suspend fun handleBatteryLevel(intent: Intent) {
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 0)
         if (level < 0 || scale <= 0) return
@@ -99,7 +120,7 @@ class PowerConnectionReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun speak(event: PowerAlertEvent) {
+    private suspend fun speak(event: PowerAlertEvent) {
         TtsManager.speak(
             text = NexusSettings.phrase(event),
             flush = true,

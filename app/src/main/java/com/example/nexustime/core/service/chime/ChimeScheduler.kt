@@ -28,8 +28,12 @@ object ChimeScheduler {
     /**
      * (Re)programa el siguiente anuncio según las preferencias actuales.
      * Si el chime está apagado, cancela cualquier alarma pendiente.
+     *
+     * Es `suspend` porque lee DataStore (asíncrono). Los llamadores lo invocan
+     * dentro de una corrutina: el Application, la actividad o `goAsync()` del
+     * propio receptor.
      */
-    fun scheduleNext(context: Context) {
+    suspend fun scheduleNext(context: Context) {
         val intervalMinutes = NexusSettings.chimeIntervalMinutes()
         if (!NexusSettings.isChimeEnabled() || intervalMinutes <= 0) {
             cancel(context)

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -25,7 +27,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.nexustime.core.data.local.HourFormat
 import com.example.nexustime.core.data.local.NexusSettings
+import com.example.nexustime.core.data.local.ScreenOnMode
 import com.example.nexustime.core.ui.components.NexusPanel
 import com.example.nexustime.core.ui.theme.NexusBlack
 import com.example.nexustime.core.ui.theme.NexusBorder
@@ -50,6 +54,8 @@ fun SettingsRoute(
     val powerAlertsEnabled by viewModel.powerAlertsEnabled.collectAsStateWithLifecycle()
     val chimeEnabled by viewModel.chimeEnabled.collectAsStateWithLifecycle()
     val chimeInterval by viewModel.chimeInterval.collectAsStateWithLifecycle()
+    val hourFormat by viewModel.hourFormat.collectAsStateWithLifecycle()
+    val screenOnMode by viewModel.screenOnMode.collectAsStateWithLifecycle()
 
     SettingsScreen(
         powerAlertsEnabled = powerAlertsEnabled,
@@ -60,6 +66,10 @@ fun SettingsRoute(
         chimeInterval = chimeInterval,
         onChimeIntervalChanged = viewModel::setChimeInterval,
         onPreviewChime = viewModel::previewChime,
+        hourFormat = hourFormat,
+        onHourFormatChanged = viewModel::setHourFormat,
+        screenOnMode = screenOnMode,
+        onScreenOnModeChanged = viewModel::setScreenOnMode,
         modifier = modifier,
     )
 }
@@ -67,9 +77,9 @@ fun SettingsRoute(
 /**
  * Panel de Ajustes.
  *
- * v0.3/0.2: alertas de carga y anuncio horario. El resto de preferencias
- * (frases editables, clima) se van sumando en posteriores entregas sobre este
- * mismo contenedor.
+ * v1.0: alertas de carga, anuncio horario, formato de hora y política de pantalla.
+ * El resto de preferencias (frases editables, clima) se van sumando en posteriores
+ * entregas sobre este mismo contenedor.
  */
 @Composable
 fun SettingsScreen(
@@ -81,12 +91,17 @@ fun SettingsScreen(
     chimeInterval: Int,
     onChimeIntervalChanged: (Int) -> Unit,
     onPreviewChime: () -> Unit,
+    hourFormat: HourFormat,
+    onHourFormatChanged: (HourFormat) -> Unit,
+    screenOnMode: ScreenOnMode,
+    onScreenOnModeChanged: (ScreenOnMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(NexusBlack)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 32.dp, vertical = 24.dp),
     ) {
         Text(
@@ -94,6 +109,60 @@ fun SettingsScreen(
             style = MaterialTheme.typography.headlineMedium,
             color = NexusWhite,
         )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        NexusPanel(
+            title = "Formato de hora",
+            subtitle = "Cómo se muestra el reloj",
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionChip(
+                    label = "Sistema",
+                    selected = hourFormat == HourFormat.SYSTEM,
+                    onClick = { onHourFormatChanged(HourFormat.SYSTEM) },
+                )
+                OptionChip(
+                    label = "12 h",
+                    selected = hourFormat == HourFormat.H12,
+                    onClick = { onHourFormatChanged(HourFormat.H12) },
+                )
+                OptionChip(
+                    label = "24 h",
+                    selected = hourFormat == HourFormat.H24,
+                    onClick = { onHourFormatChanged(HourFormat.H24) },
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        NexusPanel(
+            title = "Pantalla",
+            subtitle = "Cuándo debe quedarse encendida",
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionChip(
+                    label = "Siempre",
+                    selected = screenOnMode == ScreenOnMode.ALWAYS,
+                    onClick = { onScreenOnModeChanged(ScreenOnMode.ALWAYS) },
+                )
+                OptionChip(
+                    label = "Solo al cargar",
+                    selected = screenOnMode == ScreenOnMode.CHARGING_ONLY,
+                    onClick = { onScreenOnModeChanged(ScreenOnMode.CHARGING_ONLY) },
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Con \"Solo al cargar\", la pantalla se apaga con normalidad " +
+                    "cuando el dispositivo funciona con batería.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = NexusTextSecondary,
+            )
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -141,8 +210,8 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 NexusSettings.CHIME_INTERVALS.forEach { minutes ->
-                    IntervalChip(
-                        minutes = minutes,
+                    OptionChip(
+                        label = "Cada $minutes min",
                         selected = chimeInterval == minutes,
                         onClick = { onChimeIntervalChanged(minutes) },
                     )
@@ -199,16 +268,17 @@ private fun SwitchRow(
     }
 }
 
+/** Chip de selección única reutilizable para las opciones de Ajustes. */
 @Composable
-private fun IntervalChip(
-    minutes: Int,
+private fun OptionChip(
+    label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(text = "Cada $minutes min") },
+        label = { Text(text = label) },
         colors = FilterChipDefaults.filterChipColors(
             containerColor = NexusSurface,
             labelColor = NexusTextSecondary,
@@ -231,6 +301,10 @@ private fun SettingsScreenPreview() {
             chimeInterval = 60,
             onChimeIntervalChanged = {},
             onPreviewChime = {},
+            hourFormat = HourFormat.SYSTEM,
+            onHourFormatChanged = {},
+            screenOnMode = ScreenOnMode.ALWAYS,
+            onScreenOnModeChanged = {},
             modifier = Modifier.fillMaxWidth(),
         )
     }

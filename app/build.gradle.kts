@@ -16,8 +16,8 @@ android {
         minSdk = 26
         targetSdk = 34
 
-        versionCode = 5
-        versionName = "0.4.0"
+        versionCode = 6
+        versionName = "1.0-release"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.datastore.preferences)
 
     // Jetpack Compose
     implementation(platform(libs.compose.bom))

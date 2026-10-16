@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import com.example.nexustime.core.data.local.NexusSettings
 import com.example.nexustime.core.service.tts.TtsManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Receptor del anuncio horario (chime).
@@ -19,19 +22,31 @@ import com.example.nexustime.core.service.tts.TtsManager
  *
  * Tras cada disparo se reprograma el siguiente anuncio, de modo que toda la
  * cadena se mantiene con una única alarma viva a la vez.
+ *
+ * Como lee DataStore (asíncrono), usa [goAsync] para alargar la ventana de
+ * entrega y cerrar el [PendingResult] con `finish()` cuando la corrutina termina.
  */
 class ChimeReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == ACTION_CHIME && NexusSettings.isChimeEnabled()) {
-            TtsManager.speak(
-                text = ChimeText.currentAnnouncement(),
-                flush = false,
-            )
-        }
+        val appContext = context.applicationContext
+        val pendingResult = goAsync()
 
-        // Reagenda (o cancela, si está apagado) el próximo anuncio.
-        ChimeScheduler.scheduleNext(context)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (intent.action == ACTION_CHIME && NexusSettings.isChimeEnabled()) {
+                    TtsManager.speak(
+                        text = ChimeText.currentAnnouncement(),
+                        flush = false,
+                    )
+                }
+
+                // Reagenda (o cancela, si está apagado) el próximo anuncio.
+                ChimeScheduler.scheduleNext(appContext)
+            } finally {
+                pendingResult.finish()
+            }
+        }
     }
 
     companion object {

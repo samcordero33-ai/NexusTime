@@ -1,12 +1,16 @@
-# NexusTime v0.4.0
+# NexusTime v1.0-release
 
 Reloj de mesa y dashboard inteligente para tablets Android en **orientación horizontal**.
 
-> Incluye la base v0.1, los **avisos parlantes de corriente y batería** (v0.3), el
-> **anuncio horario por voz** (v0.2) y el **dashboard de 3 zonas con reloj neón y
-> agenda** (v0.4). La tarjeta "TU DÍA" lee los eventos de hoy del calendario del
-> dispositivo. **Todavía no** incluye clima, alarmas avanzadas ni temporizador
-> (v0.5).
+> Primera versión estable: base v0.1, **avisos parlantes de corriente y batería**
+> (v0.3), **anuncio horario por voz** (v0.2) y **dashboard de 3 zonas con reloj
+> neón y agenda** (v0.4). La **v1.0** migra las preferencias a **Jetpack
+> DataStore**, añade **formato de hora configurable** (Sistema / 12 h / 24 h),
+> **política de pantalla** (siempre / solo al cargar) y **protección anti
+> burn-in** por micro-desplazamiento del reloj.
+>
+> La tarjeta "TU DÍA" lee los eventos de hoy del calendario del dispositivo.
+> **Todavía no** incluye clima, alarmas avanzadas ni temporizador (v0.5).
 
 ## Stack
 
@@ -27,7 +31,7 @@ Las versiones viven en [`gradle/libs.versions.toml`](gradle/libs.versions.toml) 
 
 ```
 com.example.nexustime/
-├── MainActivity.kt                      # Actividad única (landscape, pantalla siempre encendida)
+├── MainActivity.kt                      # Actividad única (landscape, permiso de calendario, pantalla encendida)
 ├── NexusTimeApplication.kt              # Arranque del proceso: preferencias + motor TTS
 ├── NexusTimeApp.kt                      # Layout raíz: 3 zonas en horizontal
 ├── core/
@@ -35,7 +39,7 @@ com.example.nexustime/
 │   │   ├── calendar/
 │   │   │   └── CalendarManager.kt       # Lectura de eventos de hoy (READ_CALENDAR)
 │   │   └── local/
-│   │       └── NexusSettings.kt         # Preferencias (interruptores, frases, intervalo)
+│   │       └── NexusSettings.kt         # Preferencias sobre Jetpack DataStore
 │   ├── service/
 │   │   ├── tts/
 │   │   │   └── TtsManager.kt            # Motor Text-to-Speech compartido (español)
@@ -53,6 +57,7 @@ com.example.nexustime/
 │       ├── components/
 │       │   ├── NexusNavRail.kt          # Barra lateral de navegación
 │       │   ├── NexusPanel.kt            # Contenedor con borde plata / metal
+│       │   ├── BurnInShift.kt           # Micro-desplazamiento anti burn-in
 │       │   └── ComingSoon.kt            # Estado "próximamente"
 │       └── navigation/
 │           └── NexusDestination.kt      # Destinos: Reloj / Agenda / Ajustes
@@ -66,7 +71,7 @@ com.example.nexustime/
     │   ├── AgendaPanel.kt               # Panel derecho
     │   ├── AgendaScreen.kt              # Pantalla central de Agenda
     │   └── AgendaViewModel.kt
-    └── settings/                        # Ajustes (alertas de carga + chime)
+    └── settings/                        # Ajustes (alertas, chime, hora y pantalla)
         ├── SettingsScreen.kt
         └── SettingsViewModel.kt
 ```
@@ -114,8 +119,8 @@ de modo que registro y desregistro siempre se compensan (sin fugas de memoria).
 Se usa `ContextCompat.RECEIVER_NOT_EXPORTED`: las acciones las envía el *system UID*,
 así que ninguna otra app puede suplantarlas.
 
-Las frases viven en `SharedPreferences` con valores por defecto; su edición desde la
-UI llegará en una versión posterior.
+Las frases viven en **Jetpack DataStore** con valores por defecto; su edición desde
+la UI llegará en una versión posterior.
 
 ## Paleta oficial
 
@@ -176,8 +181,60 @@ El permiso `READ_CALENDAR` se pide al arrancar. La UI distingue tres estados:
 cargando, **sin permiso** (con su propio mensaje) y **vacío real** ("No hay
 eventos programados para hoy"), para no mostrar un vacío engañoso.
 
-En 12 h / 24 h el display respeta la preferencia del sistema
-(`DateFormat.is24HourFormat`); en 12 h se muestra el meridiano junto al segundero.
+En 12 h / 24 h el display respeta la preferencia del usuario
+(Ajustes → Formato de hora); la opción "Sistema" sigue a
+`DateFormat.is24HourFormat`. En 12 h se muestra el meridiano junto al segundero.
+
+## v1.0-release
+
+La primera versión estable consolida la persistencia y añade ajustes de uso diario
+para un reloj de mesa:
+
+### Preferencias sobre Jetpack DataStore
+
+`NexusSettings` deja atrás `SharedPreferences` y pasa a **Jetpack DataStore
+(Preferences)** (`androidx.datastore:datastore-preferences`), la fuente de verdad de
+v1.0: escrituras atómicas y consistentes en disco.
+
+DataStore es **asíncrono por diseño**, mientras que un `BroadcastReceiver.onReceive()`
+es síncrono y de ventana muy corta. Por eso la API se parte en dos caras:
+
+- **Reactiva (`StateFlow`)** para la UI (`powerAlertsEnabled`, `chimeEnabled`,
+  `chimeInterval`, `hourFormat`, `screenOnMode`). Se construyen con `stateIn` sobre
+  `dataStore.data` y son `lazy`, porque `initialize()` debe haber corrido antes de
+  tocar el store.
+- **Suspend** para los receptores y el planificador (`isPowerAlertsEnabled()`,
+  `phrase()`, `chimeIntervalMinutes()`, …), leídos con `data.first()`.
+
+Los receptores (`PowerConnectionReceiver`, `ChimeReceiver`) invocan las lecturas
+suspend dentro de **`goAsync()`**: extiende la ventana de entrega del broadcast y
+devuelve un `PendingResult` que se cierra con `finish()` al terminar la corrutina.
+
+### Formato de hora configurable
+
+`ClockViewModel` combina el *ticker* con `NexusSettings.hourFormat`
+(**Sistema / 12 h / 24 h**); cambiar la opción en Ajustes refresca el display de
+inmediato, sin esperar al siguiente segundo. En 12 h se muestra el meridiano.
+
+### Política de pantalla (`FLAG_KEEP_SCREEN_ON`)
+
+`MainActivity` decide si mantiene la pantalla encendida según `ScreenOnMode`:
+
+- **Siempre** — la pantalla nunca se apaga con la app en primer plano.
+- **Solo al cargar** — se mantiene encendida únicamente con el cargador puesto; el
+  estado de carga se sigue con un receptor propio de `ACTION_BATTERY_CHANGED`
+  (independiente de las alertas de voz).
+
+`FLAG_KEEP_SCREEN_ON` no requiere el permiso `WAKE_LOCK`.
+
+### Protección anti burn-in
+
+Un reloj de mesa deja los mismos píxeles encendidos durante horas; sobre OLED eso
+quema la imagen. `rememberBurnInOffset()` (en `core/ui/components/BurnInShift.kt`)
+devuelve cada **2 minutos** un pequeño desplazamiento de hasta **3 dp**, recorriendo
+las ocho direcciones alrededor del centro. `ClockScreen` lo aplica al bloque del
+reloj con `Modifier.offset { ... }` (versión lambda: solo recalcula layout, no
+fuerza recomposición).
 
 ## Compilar
 
