@@ -8,8 +8,8 @@ import android.os.Build
 import android.util.Log
 import com.example.nexustime.core.data.local.NexusSettings
 import com.example.nexustime.core.data.reminder.Reminder
-import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /**
  * Planifica los recordatorios con [AlarmManager].
@@ -95,7 +95,7 @@ object ReminderScheduler {
      */
     private fun nextOccurrenceMillis(minuteOfDay: Int): Long {
         val zone = ZoneId.systemDefault()
-        val now = LocalDateTime.now(zone)
+        val now = ZonedDateTime.now(zone)
 
         var target = now.toLocalDate()
             .atStartOfDay(zone)
