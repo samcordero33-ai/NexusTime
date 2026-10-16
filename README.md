@@ -1,10 +1,11 @@
-# NexusTime v0.1
+# NexusTime v0.3
 
 Reloj de mesa y dashboard inteligente para tablets Android en **orientación horizontal**.
 
-> v0.1 es la base arquitectónica. **Todavía no** incluye motor de voz (TTS), chime,
-> alarmas avanzadas ni clima: esos módulos llegan en versiones posteriores. Aquí
-> el objetivo es que el esqueleto compile, sea modular y respete la paleta oficial.
+> v0.3 añade los **avisos parlantes de corriente y batería** sobre la base v0.1.
+> Para ello incorpora el motor de voz (`TtsManager`) y la capa de preferencias
+> (`NexusSettings`). **Todavía no** incluye el chime horario (v0.2), la lectura de
+> agenda/clima (v0.4) ni las alarmas avanzadas (v0.5).
 
 ## Stack
 
@@ -26,8 +27,17 @@ Las versiones viven en [`gradle/libs.versions.toml`](gradle/libs.versions.toml) 
 ```
 com.example.nexustime/
 ├── MainActivity.kt                      # Actividad única (landscape, pantalla siempre encendida)
+├── NexusTimeApplication.kt              # Arranque del proceso: preferencias + motor TTS
 ├── NexusTimeApp.kt                      # Layout raíz: 3 zonas en horizontal
 ├── core/
+│   ├── data/
+│   │   └── local/
+│   │       └── NexusSettings.kt         # Preferencias (interruptor de alertas + frases)
+│   ├── service/
+│   │   ├── tts/
+│   │   │   └── TtsManager.kt            # Motor Text-to-Speech compartido (español)
+│   │   └── receivers/
+│   │       └── PowerConnectionReceiver.kt  # Avisos de corriente y batería
 │   └── ui/
 │       ├── theme/
 │       │   ├── Color.kt                 # Paleta oficial
@@ -45,9 +55,31 @@ com.example.nexustime/
     │   └── ClockViewModel.kt
     ├── agenda/                          # Panel "TU DÍA" (contenedor maquetado)
     │   └── AgendaPanel.kt
-    └── settings/                        # Ajustes (próximamente)
-        └── SettingsScreen.kt
+    └── settings/                        # Ajustes (alertas de carga)
+        ├── SettingsScreen.kt
+        └── SettingsViewModel.kt
 ```
+
+## Alertas de carga (v0.3)
+
+`PowerConnectionReceiver` escucha cuatro *protected broadcasts* del sistema y emite
+la frase correspondiente con `TtsManager`:
+
+| Acción del sistema | Frase por defecto |
+|---|---|
+| `ACTION_POWER_CONNECTED` | "Cargador conectado. Iniciando carga." |
+| `ACTION_POWER_DISCONNECTED` | "Desconectado de la corriente." |
+| `ACTION_BATTERY_LOW` | "Batería baja. Conecta el cargador." |
+| `ACTION_BATTERY_FULL` | "Batería completa." |
+
+El receptor se registra **de forma dinámica** en `MainActivity` (`onStart`/`onStop`)
+y solo mientras el interruptor **Ajustes → Alertas de Carga parlantes** está activo,
+de modo que registro y desregistro siempre se compensan (sin fugas de memoria).
+Se usa `ContextCompat.RECEIVER_NOT_EXPORTED`: las cuatro acciones las envía el
+* system UID*, así que ninguna otra app puede suplantarlas.
+
+Las frases viven en `SharedPreferences` con valores por defecto; su edición desde la
+UI llegará en una versión posterior.
 
 ## Paleta oficial
 
@@ -95,9 +127,10 @@ En cada push a `main`, GitHub Actions compila y publica el artefacto `NexusTime-
 
 ## Decisiones de diseño
 
-- **Sin Hilt (todavía).** No hay repositorios ni fuentes de datos que inyectar; añadir
-  DI ahora sería infraestructura sin consumidores. Se incorporará cuando exista la
-  capa de datos (v0.2).
+- **Sin Hilt (todavía).** La capa de datos (v0.3) es un singleton de preferencias
+  sin dependencias que inyectar; añadir DI ahora sería infraestructura sin
+  consumidores reales. Se incorporará cuando existan repositorios y fuentes de
+  datos propiamente dichas.
 - **Sin navegación con back stack.** Es un dashboard de una sola pantalla: el destino
   seleccionado se guarda en memoria, no hace falta NavHost.
 - **Tema solo oscuro.** Un reloj de mesa se usa con luz baja; un fondo claro arruinaría

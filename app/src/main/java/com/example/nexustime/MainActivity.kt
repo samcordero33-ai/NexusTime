@@ -7,8 +7,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.nexustime.core.data.local.NexusSettings
+import com.example.nexustime.core.service.receivers.PowerConnectionReceiver
 import com.example.nexustime.core.ui.theme.NexusBlack
 import com.example.nexustime.core.ui.theme.NexusTimeTheme
+import kotlinx.coroutines.launch
 
 /**
  * Actividad única de NexusTime.
@@ -19,12 +26,43 @@ import com.example.nexustime.core.ui.theme.NexusTimeTheme
  */
 class MainActivity : ComponentActivity() {
 
+    /*
+     * El receiver es un campo para que exista UNA sola instancia mientras viva
+     * la actividad: registrarlo como local de onCreate/desregistrarlo con otra
+     * referencia es una de las formas clásicas de acabar con
+     * "Receiver not registered".
+     */
+    private val powerAlertsReceiver = PowerConnectionReceiver()
+
+    /** Guarda contra doble registro / desregistro no emparejado. */
+    private var receiverRegistered = false
+
+    /** `true` solo entre onStart y onStop: es lo que decide si registramos. */
+    private var isStarted = false
+
+    /** Copia en memoria de la preferencia, mientras la actividad esté viva. */
+    private var powerAlertsActive = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Un reloj de mesa no debe apagar la pantalla mientras se mira.
         // FLAG_KEEP_SCREEN_ON no requiere el permiso WAKE_LOCK.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        /*
+         * El interruptor de Ajustes enciende/apaga el receptor. Se suscribe SOLO
+         * en estado STARTED para no mantener una corrutina corriendo con la app
+         * en segundo plano; cancela sola al irse a onStop.
+         */
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                NexusSettings.powerAlertsEnabled.collect { enabled ->
+                    powerAlertsActive = enabled
+                    updatePowerAlertRegistration()
+                }
+            }
+        }
 
         setContent {
             NexusTimeTheme {
@@ -35,6 +73,47 @@ class MainActivity : ComponentActivity() {
                     NexusTimeApp()
                 }
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isStarted = true
+        updatePowerAlertRegistration()
+    }
+
+    override fun onStop() {
+        isStarted = false
+        updatePowerAlertRegistration()
+        super.onStop()
+    }
+
+    /**
+     * Empareja registro/desregistro con el ciclo de vida.
+     *
+     * Registra solo si la actividad está visible Y el interruptor está activo.
+     * Garantiza que `registerReceiver` y `unregisterReceiver` se compensan, que es
+     * lo que evita la fuga de memoria (y el crash por desregistrar dos veces).
+     */
+    private fun updatePowerAlertRegistration() {
+        val shouldRegister = isStarted && powerAlertsActive
+
+        if (shouldRegister && !receiverRegistered) {
+            /*
+             * RECEIVER_NOT_EXPORTED porque estas cuatro acciones las envía el
+             * system UID (Android exime al sistema de la marca de exportado),
+             * de modo que ninguna otra app puede suplantar una alerta de carga.
+             */
+            ContextCompat.registerReceiver(
+                this,
+                powerAlertsReceiver,
+                PowerConnectionReceiver.intentFilter(),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            receiverRegistered = true
+        } else if (!shouldRegister && receiverRegistered) {
+            unregisterReceiver(powerAlertsReceiver)
+            receiverRegistered = false
         }
     }
 }
