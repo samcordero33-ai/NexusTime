@@ -54,9 +54,13 @@ object NexusSettings {
 
     private const val PREFS_NAME = "nexustime_settings"
     private const val KEY_POWER_ALERTS = "power_alerts_enabled"
+    private const val KEY_BATTERY_LOW_THRESHOLD = "battery_low_threshold_percent"
 
     /** Valor inicial: los avisos parlantes vienen activados. */
     const val DEFAULT_POWER_ALERTS = true
+
+    /** Nivel de batería (en %) a partir del cual se considera crítica. */
+    const val DEFAULT_BATTERY_LOW_THRESHOLD = 15
 
     private lateinit var prefs: SharedPreferences
 
@@ -106,6 +110,14 @@ object NexusSettings {
         prefs.edit().putBoolean(KEY_POWER_ALERTS, enabled).apply()
         _powerAlertsEnabled.value = enabled
     }
+
+    /** Umbral de batería crítica (en %), leído de forma síncrona por el receptor. */
+    fun batteryLowThreshold(): Int =
+        if (::prefs.isInitialized) {
+            prefs.getInt(KEY_BATTERY_LOW_THRESHOLD, DEFAULT_BATTERY_LOW_THRESHOLD)
+        } else {
+            DEFAULT_BATTERY_LOW_THRESHOLD
+        }
 
     /** Frase a emitir para [event]: la guardada, o la por defecto si nunca se editó. */
     fun phrase(event: PowerAlertEvent): String {

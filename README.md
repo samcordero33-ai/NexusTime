@@ -62,21 +62,27 @@ com.example.nexustime/
 
 ## Alertas de carga (v0.3)
 
-`PowerConnectionReceiver` escucha cuatro *protected broadcasts* del sistema y emite
-la frase correspondiente con `TtsManager`:
+`PowerConnectionReceiver` escucha broadcasts del sistema y emite la frase
+correspondiente con `TtsManager`:
 
-| Acción del sistema | Frase por defecto |
-|---|---|
-| `ACTION_POWER_CONNECTED` | "Cargador conectado. Iniciando carga." |
-| `ACTION_POWER_DISCONNECTED` | "Desconectado de la corriente." |
-| `ACTION_BATTERY_LOW` | "Batería baja. Conecta el cargador." |
-| `ACTION_BATTERY_FULL` | "Batería completa." |
+| Acción del sistema | Evento | Frase por defecto |
+|---|---|---|
+| `ACTION_POWER_CONNECTED` | Conexión a corriente | "Cargador conectado. Iniciando carga." |
+| `ACTION_POWER_DISCONNECTED` | Desconexión | "Desconectado de la corriente." |
+| `ACTION_BATTERY_CHANGED` | Batería ≤ 15% | "Batería baja. Conecta el cargador." |
+| `ACTION_BATTERY_CHANGED` | Carga al 100% (conectada) | "Batería completa." |
+
+`ACTION_BATTERY_CHANGED` es un *sticky broadcast* que llega al registrarse y en cada
+cambio de batería; sobre él se detectan el nivel crítico (umbral por defecto 15%) y
+la carga completa (`BATTERY_STATUS_FULL`). Se usa esta acción y no
+`ACTION_BATTERY_LOW`/`ACTION_BATTERY_FULL` porque `Intent.ACTION_BATTERY_FULL` no
+existe en el SDK y el umbral de `ACTION_BATTERY_LOW` lo fija el fabricante.
 
 El receptor se registra **de forma dinámica** en `MainActivity` (`onStart`/`onStop`)
 y solo mientras el interruptor **Ajustes → Alertas de Carga parlantes** está activo,
 de modo que registro y desregistro siempre se compensan (sin fugas de memoria).
-Se usa `ContextCompat.RECEIVER_NOT_EXPORTED`: las cuatro acciones las envía el
-* system UID*, así que ninguna otra app puede suplantarlas.
+Se usa `ContextCompat.RECEIVER_NOT_EXPORTED`: las acciones las envía el *system UID*,
+así que ninguna otra app puede suplantarlas.
 
 Las frases viven en `SharedPreferences` con valores por defecto; su edición desde la
 UI llegará en una versión posterior.
