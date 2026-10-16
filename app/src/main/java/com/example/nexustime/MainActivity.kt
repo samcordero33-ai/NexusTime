@@ -1,9 +1,12 @@
 package com.example.nexustime
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
@@ -45,12 +48,34 @@ class MainActivity : ComponentActivity() {
     /** Copia en memoria de la preferencia, mientras la actividad esté viva. */
     private var powerAlertsActive = false
 
+    /*
+     * Launcher del permiso de calendario. Debe crearse como propiedad (y no
+     * dentro de onCreate) para que el ActivityResultRegistry pueda restaurarlo
+     * si el sistema mata la actividad mientras el diálogo está abierto.
+     */
+    private val calendarPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* La agenda relee sola en ON_RESUME; aquí no hay nada que hacer. */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Un reloj de mesa no debe apagar la pantalla mientras se mira.
         // FLAG_KEEP_SCREEN_ON no requiere el permiso WAKE_LOCK.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        /*
+         * La tarjeta "TU DÍA" lee el calendario del dispositivo. El permiso es en
+         * tiempo de ejecución: se pide una vez al arrancar y la agenda degrada
+         * con dignidad (mensaje propio) si el usuario lo deniega.
+         */
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_CALENDAR,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+        }
 
         /*
          * El interruptor de Ajustes enciende/apaga el receptor. Se suscribe SOLO

@@ -1,12 +1,12 @@
-# NexusTime v0.3.1
+# NexusTime v0.4.0
 
 Reloj de mesa y dashboard inteligente para tablets Android en **orientación horizontal**.
 
-> Incluye la base v0.1, los **avisos parlantes de corriente y batería** (v0.3) y el
-> **anuncio horario por voz** (v0.2). Para ello incorpora el motor de voz
-> (`TtsManager`), la capa de preferencias (`NexusSettings`) y el planificador del
-> chime (`ChimeScheduler`). **Todavía no** incluye la lectura de agenda/clima (v0.4)
-> ni las alarmas avanzadas (v0.5).
+> Incluye la base v0.1, los **avisos parlantes de corriente y batería** (v0.3), el
+> **anuncio horario por voz** (v0.2) y el **dashboard de 3 zonas con reloj neón y
+> agenda** (v0.4). La tarjeta "TU DÍA" lee los eventos de hoy del calendario del
+> dispositivo. **Todavía no** incluye clima, alarmas avanzadas ni temporizador
+> (v0.5).
 
 ## Stack
 
@@ -32,6 +32,8 @@ com.example.nexustime/
 ├── NexusTimeApp.kt                      # Layout raíz: 3 zonas en horizontal
 ├── core/
 │   ├── data/
+│   │   ├── calendar/
+│   │   │   └── CalendarManager.kt       # Lectura de eventos de hoy (READ_CALENDAR)
 │   │   └── local/
 │   │       └── NexusSettings.kt         # Preferencias (interruptores, frases, intervalo)
 │   ├── service/
@@ -45,7 +47,7 @@ com.example.nexustime/
 │   │       └── PowerConnectionReceiver.kt  # Avisos de corriente y batería
 │   └── ui/
 │       ├── theme/
-│       │   ├── Color.kt                 # Paleta oficial
+│       │   ├── Color.kt                 # Paleta oficial + colores de aura/glow
 │       │   ├── Theme.kt                 # NexusTimeTheme + esquema Material 3
 │       │   └── Type.kt                  # Escala tipográfica y estilos del reloj
 │       ├── components/
@@ -53,13 +55,17 @@ com.example.nexustime/
 │       │   ├── NexusPanel.kt            # Contenedor con borde plata / metal
 │       │   └── ComingSoon.kt            # Estado "próximamente"
 │       └── navigation/
-│           └── NexusDestination.kt      # Destinos de la barra lateral
+│           └── NexusDestination.kt      # Destinos: Reloj / Agenda / Ajustes
 └── feature/
-    ├── clock/                           # Reloj gigante (implementado)
+    ├── clock/                           # Reloj neón + indicadores de estado
     │   ├── ClockScreen.kt
+    │   ├── ClockStatusIndicators.kt     # Batería / carga + estado del chime
     │   └── ClockViewModel.kt
-    ├── agenda/                          # Panel "TU DÍA" (contenedor maquetado)
-    │   └── AgendaPanel.kt
+    ├── agenda/                          # Panel "TU DÍA" (agenda real)
+    │   ├── AgendaContent.kt             # Lista + estados compartidos
+    │   ├── AgendaPanel.kt               # Panel derecho
+    │   ├── AgendaScreen.kt              # Pantalla central de Agenda
+    │   └── AgendaViewModel.kt
     └── settings/                        # Ajustes (alertas de carga + chime)
         ├── SettingsScreen.kt
         └── SettingsViewModel.kt
@@ -131,19 +137,47 @@ distinta opacidad. Ningún composable declara colores literales.
 ┌────────┬──────────────────────────────┬──────────────────┐
 │  (a)   │           (b)                │       (c)        │
 │  Barra │      Zona central            │   Panel derecho  │
-│ lateral│      Reloj gigante           │   "TU DÍA"       │
-│ 88 dp  │      weight(1f)              │    320 dp        │
+│ lateral│      Reloj / Agenda /        │   "TU DÍA"       │
+│ 88 dp  │      Ajustes (transición)    │    340 dp        │
 └────────┴──────────────────────────────┴──────────────────┘
 ```
 
-- **(a) Barra lateral:** accesos rápidos Reloj / Alarmas / Ajustes. Seleccionado en
-  azul eléctrico, sin seleccionar en plata.
-- **(b) Zona central:** hora en blanco puro (128 sp), segundero en azul eléctrico,
-  acento azul bajo el display, fecha y zona horaria en celeste.
-- **(c) Panel derecho:** contenedor con borde plata / metal preparado para la agenda.
+- **(a) Barra lateral:** accesos Reloj / Agenda / Ajustes. Seleccionado en azul
+  eléctrico, sin seleccionar en plata. El indicador activo se anima solo.
+- **(b) Zona central:** cambia de destino con una transición suave (fade + slide
+  horizontal, sentido según el orden de la barra). En Reloj: hora en blanco puro
+  (128 sp), segundero en azul eléctrico, aura de neón, fecha y zona horaria.
+- **(c) Panel derecho:** tarjeta "TU DÍA" siempre visible, con los eventos de hoy.
 
 La orientación se fija en el manifiesto con `android:screenOrientation="sensorLandscape"`:
 permite landscape y landscape invertido, nunca vertical.
+
+## Dashboard y agenda (v0.4)
+
+La pantalla se divide en tres zonas fluidas. El display del reloj lleva un
+**aura de neón** en dos capas, ambas derivadas del celeste oficial (`#80D8FF`):
+
+1. Un **degradado radial** (`Brush.radialGradient`) detrás de los dígitos, cuya
+   opacidad respira entre 10% y 28% en ~2.8 s (`rememberInfiniteTransition`).
+2. Un **`Shadow`** sobre el propio texto, que el framework rasteriza en todos los
+   niveles de API soportados (a diferencia de `Modifier.blur()`, que requiere API 31+).
+
+Debajo del display hay **indicadores en miniatura** (celeste): estado de
+carga/batería (lee `ACTION_BATTERY_CHANGED` en tiempo real) y si el anuncio
+horario está activo.
+
+La tarjeta **"TU DÍA"** y la pantalla central de **Agenda** comparten un único
+`AgendaViewModel` (misma instancia, porque `viewModel()` resuelve el
+`ViewModelStoreOwner` del Activity). `CalendarManager` consulta los eventos de
+hoy del calendario del dispositivo en `Dispatchers.IO` y la lista se refresca al
+volver a `ON_RESUME`, de modo que tras conceder el permiso se rellena sola.
+
+El permiso `READ_CALENDAR` se pide al arrancar. La UI distingue tres estados:
+cargando, **sin permiso** (con su propio mensaje) y **vacío real** ("No hay
+eventos programados para hoy"), para no mostrar un vacío engañoso.
+
+En 12 h / 24 h el display respeta la preferencia del sistema
+(`DateFormat.is24HourFormat`); en 12 h se muestra el meridiano junto al segundero.
 
 ## Compilar
 

@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Tarjeta "TU DÍA": eventos del calendario del dispositivo (solo lectura). -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+
     <application
         android:name=".NexusTimeApplication"
         android:allowBackup="true"

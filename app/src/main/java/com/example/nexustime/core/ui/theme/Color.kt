@@ -60,3 +60,15 @@ val NexusTextTertiary = NexusSilver.copy(alpha = 0.55f)
 
 /** Fondo del indicador de seleccion en la barra lateral. */
 val NexusSelectionIndicator = NexusBlue.copy(alpha = 0.18f)
+
+/*
+ * EFECTOS
+ * El aura / glow del reloj sale del Celeste oficial (#80D8FF): la misma fuente
+ * de verdad que los widgets de estado, solo en formato de brillo difuso.
+ */
+
+/** Aura difusa detrás de los dígitos del reloj (celeste translúcido). */
+val NexusGlow = NexusSkyBlue.copy(alpha = 0.45f)
+
+/** Núcleo tenue del aura; se combina con [NexusGlow] en el degradado radial. */
+val NexusGlowSoft = NexusSkyBlue.copy(alpha = 0.14f)
