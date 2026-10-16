@@ -1,11 +1,12 @@
-# NexusTime v0.3
+# NexusTime v0.3.1
 
 Reloj de mesa y dashboard inteligente para tablets Android en **orientación horizontal**.
 
-> v0.3 añade los **avisos parlantes de corriente y batería** sobre la base v0.1.
-> Para ello incorpora el motor de voz (`TtsManager`) y la capa de preferencias
-> (`NexusSettings`). **Todavía no** incluye el chime horario (v0.2), la lectura de
-> agenda/clima (v0.4) ni las alarmas avanzadas (v0.5).
+> Incluye la base v0.1, los **avisos parlantes de corriente y batería** (v0.3) y el
+> **anuncio horario por voz** (v0.2). Para ello incorpora el motor de voz
+> (`TtsManager`), la capa de preferencias (`NexusSettings`) y el planificador del
+> chime (`ChimeScheduler`). **Todavía no** incluye la lectura de agenda/clima (v0.4)
+> ni las alarmas avanzadas (v0.5).
 
 ## Stack
 
@@ -32,10 +33,14 @@ com.example.nexustime/
 ├── core/
 │   ├── data/
 │   │   └── local/
-│   │       └── NexusSettings.kt         # Preferencias (interruptor de alertas + frases)
+│   │       └── NexusSettings.kt         # Preferencias (interruptores, frases, intervalo)
 │   ├── service/
 │   │   ├── tts/
 │   │   │   └── TtsManager.kt            # Motor Text-to-Speech compartido (español)
+│   │   ├── chime/
+│   │   │   ├── ChimeScheduler.kt        # AlarmManager: próximo anuncio horario
+│   │   │   ├── ChimeReceiver.kt         # Dispara el anuncio y reprograma
+│   │   │   └── ChimeText.kt             # Hora en formato hablado
 │   │   └── receivers/
 │   │       └── PowerConnectionReceiver.kt  # Avisos de corriente y batería
 │   └── ui/
@@ -55,10 +60,29 @@ com.example.nexustime/
     │   └── ClockViewModel.kt
     ├── agenda/                          # Panel "TU DÍA" (contenedor maquetado)
     │   └── AgendaPanel.kt
-    └── settings/                        # Ajustes (alertas de carga)
+    └── settings/                        # Ajustes (alertas de carga + chime)
         ├── SettingsScreen.kt
         └── SettingsViewModel.kt
 ```
+
+## Anuncio horario / chime (v0.2)
+
+`ChimeScheduler` agenda con `AlarmManager` la **próxima hora alineada al reloj**
+(en punto o y media, según el intervalo) y `ChimeReceiver` la anuncia por voz y
+reprograma la siguiente. Se usa una alarma de un único disparo que se rearma tras
+cada aviso, en lugar de una repetitiva, para respetar el cambio de horario y no
+acumular deriva.
+
+- Intervalos configurables: **30** o **60** minutos (Ajustes → Anuncio horario).
+- La hora se escribe en formato hablado ("Son las 2 en punto de la tarde") para
+  que el motor de voz no la lea dígito a dígito.
+- Plantilla editable: `NexusSettings` guarda `"Son las {hora}"` (el `{hora}` se
+  sustituye por la hora hablada); su edición desde la UI llegará en una versión
+  posterior.
+- Al reiniciar el dispositivo o actualizar la app, `ChimeReceiver` vuelve a
+  programar la alarma (`BOOT_COMPLETED` / `MY_PACKAGE_REPLACED`).
+- Si no hay permiso de alarmas exactas (Android 12+), cae a una alarma inexacta en
+  vez de fallar: el aviso puede llegar con margen, pero no se pierde.
 
 ## Alertas de carga (v0.3)
 

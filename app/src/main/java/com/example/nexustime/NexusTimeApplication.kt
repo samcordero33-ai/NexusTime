@@ -2,6 +2,7 @@ package com.example.nexustime
 
 import android.app.Application
 import com.example.nexustime.core.data.local.NexusSettings
+import com.example.nexustime.core.service.chime.ChimeScheduler
 import com.example.nexustime.core.service.tts.TtsManager
 
 /**
@@ -13,9 +14,10 @@ import com.example.nexustime.core.service.tts.TtsManager
  *  * [NexusSettings] — para que el receiver pueda leer el interruptor de forma síncrona.
  *  * [TtsManager]    — para que el motor de voz tenga tiempo de estar listo; el texto
  *                      que llegue mientras arranca se encola y se reproduce al final.
+ *  * [ChimeScheduler]— (re)programa el anuncio horario con AlarmManager.
  *
- * No se arranca ningún trabajo pesado aquí: solo crear las instancias singleton,
- * para no penalizar el arranque de la app.
+ * No se arranca ningún trabajo pesado aquí: solo crear las instancias singleton
+ * y dejar agendada la próxima alarma, para no penalizar el arranque de la app.
  */
 class NexusTimeApplication : Application() {
 
@@ -23,5 +25,6 @@ class NexusTimeApplication : Application() {
         super.onCreate()
         NexusSettings.initialize(this)
         TtsManager.initialize(this)
+        ChimeScheduler.scheduleNext(this)
     }
 }

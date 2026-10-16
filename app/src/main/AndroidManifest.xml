@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Anuncio horario (chime): alarmas exactas (Android 12+) y reprogramación tras reinicio. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".NexusTimeApplication"
         android:allowBackup="true"
@@ -22,6 +26,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Receptor del anuncio horario. Declarado en el manifiesto para que el
+          PendingIntent de AlarmManager pueda despertar el proceso con la app
+          cerrada. exported=false: solo lo dispara la propia app o el sistema
+          (BOOT_COMPLETED es un broadcast protegido).
+        -->
+        <receiver
+            android:name=".core.service.chime.ChimeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

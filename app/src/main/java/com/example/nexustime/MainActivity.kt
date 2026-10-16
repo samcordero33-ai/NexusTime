@@ -12,9 +12,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.nexustime.core.data.local.NexusSettings
+import com.example.nexustime.core.service.chime.ChimeScheduler
 import com.example.nexustime.core.service.receivers.PowerConnectionReceiver
 import com.example.nexustime.core.ui.theme.NexusBlack
 import com.example.nexustime.core.ui.theme.NexusTimeTheme
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
@@ -61,6 +63,22 @@ class MainActivity : ComponentActivity() {
                     powerAlertsActive = enabled
                     updatePowerAlertRegistration()
                 }
+            }
+        }
+
+        /*
+         * El chime se (re)programa con AlarmManager. Se reacciona a los cambios de
+         * preferencia mientras la app está visible (que es cuando se pueden tocar
+         * los Ajustes); el Application ya lo programa al arrancar y el propio
+         * ChimeReceiver se reprograma tras cada disparo.
+         */
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                    NexusSettings.chimeEnabled,
+                    NexusSettings.chimeInterval,
+                ) { enabled, interval -> enabled to interval }
+                    .collect { ChimeScheduler.scheduleNext(this@MainActivity) }
             }
         }
 
