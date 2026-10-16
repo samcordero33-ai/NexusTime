@@ -52,7 +52,7 @@ private data class BatteryReading(
  * requiere permiso porque es un broadcast del propio sistema hacia la app.
  */
 @Composable
-fun rememberBatteryReading(): BatteryReading {
+private fun rememberBatteryReading(): BatteryReading {
     val context = LocalContext.current
     var reading by remember { mutableStateOf(BatteryReading(percent = 0, isCharging = false, isFull = false)) }
 

@@ -44,7 +44,7 @@ object CalendarManager {
         CalendarContract.Instances.CALENDAR_DISPLAY_NAME,
     )
 
-    private const val SELECTION: String? = null
+    private val SORT_ORDER = "${CalendarContract.Instances.BEGIN} ASC"
 
     /**
      * `true` si la app ya tiene READ_CALENDAR concedido.
@@ -86,9 +86,9 @@ object CalendarManager {
             context.contentResolver.query(
                 uri,
                 PROJECTION,
-                SELECTION,
                 null,
-                "${CalendarContract.Instances.BEGIN} ASC",
+                null,
+                SORT_ORDER,
             )?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(PROJECTION[0])
                 val titleIndex = cursor.getColumnIndexOrThrow(PROJECTION[1])
